@@ -45,3 +45,4 @@ class AuthCheck extends StatelessWidget {
     return Scaffold();
   }
 }
+
