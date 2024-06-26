@@ -1,0 +1,40 @@
+(function() {
+    // Define a list of file names
+    var fileNames = [
+        "SPECTRUM_SNRainbow_ChildEquipments_202406250106_33_00000001.csv",
+        "SPECTRUM_SNRainbow_ChildEquipments_202406250106_33_00000002.csv",
+        "SPECTRUM_SNRainbow_ChildEquipments_202406250106_33_00000003.csv",
+        "SPECTRUM_SNRainbow_ChildEquipments_202406250106_33_00000004.csv",
+        "SPECTRUM_SNRainbow_ChildEquipments_202406250106_33_00000005.csv",
+        "SPECTRUM_SNRainbow_Equipments_202406250106_3_00000001.csv",
+        "SPECTRUM_SNRainbow_Equipments_202406250106_3_00000002.csv",
+        "SPECTRUM_SNRainbow_Equipments_202406250106_3_00000003.csv"
+    ];
+
+    // Function to extract and return sorting key
+    function extractSortKey(fileName) {
+        var match = fileName.match(/(\d+)_([\d]+)\.csv$/);
+        return match ? match[1] + match[2] : "";
+    }
+
+    // Sort the filenames
+    fileNames.sort(function(a, b) {
+        var aIsChild = a.includes("ChildEquipments");
+        var bIsChild = b.includes("ChildEquipments");
+
+        // Prioritize 'Equipments' before 'ChildEquipments'
+        if (aIsChild && !bIsChild) return 1;
+        if (!aIsChild && bIsChild) return -1;
+
+        // If both are either 'Equipments' or 'ChildEquipments', sort by numeric key
+        var aKey = extractSortKey(a);
+        var bKey = extractSortKey(b);
+
+        return aKey.localeCompare(bKey, undefined, { numeric: true });
+    });
+
+    // Print sorted filenames
+    fileNames.forEach(function(fileName) {
+        gs.info(fileName);
+    });
+})();
