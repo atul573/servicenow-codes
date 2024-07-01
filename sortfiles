@@ -88,4 +88,36 @@ console.log(sortedFileNames);
 
 
 
+function waitForResponse(agent, source) {
+    var startTime = new GlideDateTime();
+    var maxWaitTime = 60000; // 60 seconds
+    var waitInterval = 5000; // 5 seconds
+
+    while (new GlideDateTime().getNumericValue() - startTime.getNumericValue() < maxWaitTime) {
+        var eccResponse = new GlideRecord('ecc_queue');
+        eccResponse.addQuery('agent', agent);
+        eccResponse.addQuery('source', source);
+        eccResponse.addQuery('queue', 'input');
+        eccResponse.addQuery('state', 'ready');
+        eccResponse.orderByDesc('sys_created_on');
+        eccResponse.query();
+
+        if (eccResponse.next()) {
+            // Process the response
+            var responsePayload = eccResponse.payload;
+            // Handle the response payload
+            return responsePayload;
+        }
+
+        gs.sleep(waitInterval); // Wait for the interval before checking again
+    }
+
+    gs.error('Timeout waiting for ECC queue response');
+    return null;
+}
+
+
+
+
+
 
