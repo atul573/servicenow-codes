@@ -1,0 +1,25 @@
+// Define the table and create a GlideRecord object
+var gr = new GlideRecord('your_table_name'); // Replace 'your_table_name' with the actual table name
+
+// Add query conditions if needed (e.g., to filter specific records)
+// gr.addQuery('condition_field', 'condition_value');
+
+// Query the records
+gr.query();
+
+while (gr.next()) {
+    // Create a GlideDateTime object
+    var gdt = new GlideDateTime();
+
+    // Format the date as an integer (e.g., YYYYMMDD)
+    var formattedDate = gdt.getLocalDate().getByFormat('yyyyMMdd');
+
+    // Populate the integer date field
+    gr.integer_date_field = parseInt(formattedDate, 10); // Replace 'integer_date_field' with the actual field name
+
+    // Update the record
+    gr.update();
+}
+
+// Output a message to indicate the script has completed
+gs.print('Integer date fields have been updated.');
