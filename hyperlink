@@ -1,0 +1,10 @@
+   var url = 'https://mylink.to.cataog/form';
+
+        g_form.showFieldMsg("approvals", "this will be removed"); // this field msg will be overwritten by the below DOM manipulation code
+		var variable_sys_id = "eedbb8b247ca3110b3b3b477536d4340"; //Variable sys id in which we need to display the message.
+        var x = gel('IO:'+variable_sys_id+'_fieldmsg');
+        x.innerHTML = '<div class="fieldmsg notification notification-info">' + 
+		"<p> <b> Available options </b> </p> "+
+		"<p> - Option A </p>"+
+		"<p> - Option B </p>"+
+		"<p><a href='" + url + "' target='_blank' >Link to form</a></p>" + '</div>';
