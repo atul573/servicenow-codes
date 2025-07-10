@@ -55,3 +55,53 @@
     }
   }
 })();
+
+
+
+
+(function() {
+    var invalidShares = [];
+    var shareGR = new GlideRecord('sys_sharing');
+    shareGR.query();
+    
+    while (shareGR.next()) {
+        var type = shareGR.type.toString(); // 'user', 'group', 'role'
+        var targetSysId = shareGR.target.toString();
+        var targetExists = false;
+
+        if (type === 'user') {
+            var userGR = new GlideRecord('sys_user');
+            if (userGR.get(targetSysId)) targetExists = true;
+        } else if (type === 'group') {
+            var groupGR = new GlideRecord('sys_user_group');
+            if (groupGR.get(targetSysId)) targetExists = true;
+        } else if (type === 'role') {
+            var roleGR = new GlideRecord('sys_user_role');
+            if (roleGR.get(targetSysId)) targetExists = true;
+        } else {
+            continue; // skip other types
+        }
+
+        if (!targetExists) {
+            invalidShares.push({
+                Report: shareGR.document.getDisplayValue(),
+                Type: type,
+                InvalidTarget: targetSysId
+            });
+        }
+    }
+
+    // Output result
+    if (invalidShares.length > 0) {
+        gs.info("Reports shared with nonexistent users/groups:");
+        for (var i = 0; i < invalidShares.length; i++) {
+            gs.info("Report: " + invalidShares[i].Report +
+                    " | Type: " + invalidShares[i].Type +
+                    " | Missing Target Sys ID: " + invalidShares[i].InvalidTarget);
+        }
+    } else {
+        gs.info("No invalid report shares found.");
+    }
+})();
+
+
