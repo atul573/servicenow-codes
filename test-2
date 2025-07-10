@@ -15,3 +15,109 @@ Best regards,
 [Your Name]  
 [Your Position]  
 [Your Contact Information]
+
+
+
+
+
+
+/*
+ * Reports whose owner/share points to a user or group that no longer exists
+ * -- compatible with all modern ServiceNow releases                       
+ * Tables touched:
+ *   • sys_report                    – owner (user / group) + roles
+ *   • sys_report_users_groups       – explicit “Share” entries
+ * Results are printed to the node log (gs.info)
+ * ----------------------------------------------------------------------- */
+(function () {
+    var orphans = [];
+
+    /* -----------------------------------------------------------
+     * 1.  Owner / Group reference directly on the sys_report row
+     * ----------------------------------------------------------- */
+    var rpt = new GlideRecord('sys_report');
+    rpt.query();
+    while (rpt.next()) {
+
+        /* owner (User) ----------------------------------------- */
+        if (rpt.user) {                            // owner is set
+            var usr = new GlideRecord('sys_user');
+            if (!usr.get(rpt.user.toString())) {   // user missing
+                orphans.push({
+                    report : rpt.getDisplayValue('title') || rpt.getDisplayValue(),
+                    rpt_id : rpt.getUniqueValue(),
+                    bad_id : rpt.user.toString(),
+                    type   : 'owner-user'
+                });
+            }
+        }
+
+        /* owner (Group) ---------------------------------------- */
+        if (rpt.group) {                           // group shared
+            var grp = new GlideRecord('sys_user_group');
+            if (!grp.get(rpt.group.toString())) {  // group missing
+                orphans.push({
+                    report : rpt.getDisplayValue('title') || rpt.getDisplayValue(),
+                    rpt_id : rpt.getUniqueValue(),
+                    bad_id : rpt.group.toString(),
+                    type   : 'owner-group'
+                });
+            }
+        }
+    }
+
+    /* -----------------------------------------------------------
+     * 2.  Explicit “Share” rows in sys_report_users_groups
+     * ----------------------------------------------------------- */
+    var share = new GlideRecord('sys_report_users_groups');
+    share.query();
+    while (share.next()) {
+
+        /* shared to user --------------------------------------- */
+        if (share.user) {
+            var shareUsr = new GlideRecord('sys_user');
+            if (!shareUsr.get(share.user.toString())) {
+                orphans.push({
+                    report   : share.report.getDisplayValue(),
+                    rpt_id   : share.report.toString(),
+                    bad_id   : share.user.toString(),
+                    type     : 'shared-user',
+                    share_id : share.getUniqueValue()
+                });
+            }
+        }
+
+        /* shared to group -------------------------------------- */
+        if (share.group) {
+            var shareGrp = new GlideRecord('sys_user_group');
+            if (!shareGrp.get(share.group.toString())) {
+                orphans.push({
+                    report   : share.report.getDisplayValue(),
+                    rpt_id   : share.report.toString(),
+                    bad_id   : share.group.toString(),
+                    type     : 'shared-group',
+                    share_id : share.getUniqueValue()
+                });
+            }
+        }
+    }
+
+    /* -----------------------------------------------------------
+     * 3.  Dump the findings
+     * ----------------------------------------------------------- */
+    gs.info('====== Reports referencing NON-EXISTENT users / groups ======');
+    if (orphans.length === 0) {
+        gs.info('Great news – no orphaned references were found!');
+    } else {
+        orphans.forEach(function (o) {
+            gs.info(
+                'Report: ' + o.report +
+                ' [' + o.rpt_id + '] → missing ' + o.type +
+                ' = ' + o.bad_id +
+                (o.share_id ? '  (share-row: ' + o.share_id + ')' : '')
+            );
+        });
+        gs.info('Total orphaned references: ' + orphans.length);
+    }
+})();
+
