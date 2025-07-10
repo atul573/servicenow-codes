@@ -1,47 +1,57 @@
 (function() {
-    var threeMonthsAgo = new GlideDateTime();
-    threeMonthsAgo.addMonthsUTC(-3);
+  var threeMonthsAgo = new GlideDateTime();
+  threeMonthsAgo.addMonthsUTC(-3);
 
-    // 1. Reports not run in the last 3 months
-    var staleReports = new GlideRecord('sys_report');
-    staleReports.addQuery('last_run', '<', threeMonthsAgo);
-    staleReports.query();
-    while (staleReports.next()) {
-        gs.print("Report not run in 3 months: " + staleReports.name);
-        // You can also notify/report_owner or flag the report here
+  // 1. Reports not run in last 3 months
+  var statsGR = new GlideRecord('report_stats');
+  statsGR.addQuery('sys_updated_on', '<', threeMonthsAgo);
+  statsGR.query();
+  var staleReportIds = [];
+  while (statsGR.next()) {
+    staleReportIds.push(statsGR.report.toString());
+  }
+
+  // Query report names
+  if (staleReportIds.length) {
+    var rpt = new GlideRecord('sys_report');
+    rpt.addQuery('sys_id', 'IN', staleReportIds.join(','));
+    rpt.query();
+    while (rpt.next()) {
+      gs.print('⚠️ Stale report (not run in 3 months): ' + rpt.name);
     }
+  }
 
-    // 2. Reports assigned to a non-existent user or group
-    var reports = new GlideRecord('sys_report');
-    reports.query();
-    while (reports.next()) {
-        var assignedUser = reports.getValue('owner');  // Assuming 'owner' holds user reference
-        var user = new GlideRecord('sys_user');
-        if (!user.get(assignedUser)) {
-            gs.print("Report assigned to non-existent user: " + reports.name);
-        }
-
-        var assignedGroup = reports.getValue('group'); // Assuming group field exists
-        if (assignedGroup) {
-            var group = new GlideRecord('sys_user_group');
-            if (!group.get(assignedGroup)) {
-                gs.print("Report assigned to non-existent group: " + reports.name);
-            }
-        }
+  // 2. Reports assigned to nonexistent user or group
+  rpt = new GlideRecord('sys_report');
+  rpt.query();
+  while (rpt.next()) {
+    var ownerId = rpt.getValue('owner');
+    if (ownerId) {
+      var usr = new GlideRecord('sys_user');
+      if (!usr.get(ownerId)) {
+        gs.print('❌ Report "' + rpt.name + '" assigned to missing user: ' + ownerId);
+      }
     }
-
-    // 3. Reports shared with a group which has no users
-    var reportShare = new GlideRecord('sys_report_group'); // Replace with actual table if different
-    reportShare.query();
-    while (reportShare.next()) {
-        var groupId = reportShare.getValue('group');
-        var groupUser = new GlideRecord('sys_user_grmember');
-        groupUser.addQuery('group', groupId);
-        groupUser.query();
-
-        if (!groupUser.hasNext()) {
-            gs.print("Report shared with group having no users: Report=" +
-                reportShare.report.name + ", Group=" + groupId);
-        }
+    var grpId = rpt.getValue('group');
+    if (grpId) {
+      var grp = new GlideRecord('sys_user_group');
+      if (!grp.get(grpId)) {
+        gs.print('❌ Report "' + rpt.name + '" assigned to missing group: ' + grpId);
+      }
     }
+  }
+
+  // 3. Reports shared with a group that has no users
+  var share = new GlideRecord('sys_report_group'); // adjust if table name differs
+  share.query();
+  while (share.next()) {
+    var gId = share.getValue('group');
+    var mem = new GlideRecord('sys_user_grmember');
+    mem.addQuery('group', gId);
+    mem.query();
+    if (!mem.hasNext()) {
+      var reportName = share.report.name + ' (' + share.report.sys_id + ')';
+      gs.print('⚠️ Shared report with empty group: ' + reportName + ', group: ' + gId);
+    }
+  }
 })();
